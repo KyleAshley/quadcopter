@@ -12,194 +12,103 @@
 #include "delays.h"
 #include "distanceSensor.h"
 
-#define ALTITUDETOLERANCE 5		// meters
-#define HEADINGTOLERANCE 6.0	//degrees
-#define PITCHTOLERANCE 6.0		// degrees
-#define ROLLTOLERANCE 6.0		// degrees
+/* Define:
+ *     angle_off(ENUM TYPE) - ENUM TYPE 0=PITCH, 1=ROLL, 2=HEADING, 3=ALTITUDE
+ *     unsigned int* motorRelationships(ENUM TYPE); // Returns Doubleton (int num_in_array, unsigned int* array)
+ *     change_threshold = 
+ *
+ *
+ *
+ */
 
-#define BR 0x1F                 // 100kHz BR
+#define PITCH     0
+#define ROLL      1
+#define HEADING   2
+#define ALTITUDE  3
 
-/******************************************************************************/
-// Flight Control Variables
-/******************************************************************************/
-float fc_actualPitch;
-float fc_desiredPitch;
+#define POSITIVE   1
+#define NEGATIVE  -1
 
-float fc_actualRoll;
-float fc_desiredRoll;
-
-float fc_actualAltitude;
-float fc_desiredAltitude;
-
-float fc_actualHeading;
-float fc_desiredHeading;
-
-/******************************************************************************/
-// Flight Control Functions
-/******************************************************************************/
-void fc_setup(void)
+int** get_motors(const int TYPE_CORRECTION)
 {
-    openI2C(BR);
-    LCDDelayDATA(TCHAR);
-
-    a_setup();
-  	LCDDelayDATA(TCHAR);
-
-  	b_setup();
-  	LCDDelayDATA(TCHAR);
-
-    m_setup(4.7);
-  	LCDDelayDATA(TCHAR);
-
-  	d_setup();
-  	LCDDelayDATA(TCHAR);
+	int **operands = malloc(sizeof(int) + sizeof(int*));
+	if (TYPE_CORRECTION == PITCH) {
+		*operands[0] = 2;
+		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
+		operands[1][0][0] = 0;  // motor
+		operands[1][0][1] = POSITIVE; // arbitrary
+		operands[1][1][0] = 2;  // opposite motor
+		operands[1][1][1] = NEGATIVE; // important that operands[1][0][1] is inverse
+	} else if (TYPE_CORRECTION == ROLL) {
+		*operands[0] = 2;
+		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
+		operands[1][0][0] = 1;  // motor
+		operands[1][0][1] = POSITIVE; // arbitrary
+		operands[1][1][0] = 3;  // opposite motor
+		operands[1][1][1] = NEGATIVE; // important that operands[1][0][1] is inverse
+	} else if (TYPE_CORRECTION == HEADING) {
+		*operands[0] = 4;
+		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
+		operands[1][0][0] = 0;  // motor
+		operands[1][0][1] = POSITIVE; // arbitrary
+		operands[1][1][0] = 2;  // opposite motor
+		operands[1][1][1] = POSITIVE; // important that operands[1][0][1] is inverse
+		operands[1][2][0] = 1;  // opposite motor
+		operands[1][2][1] = NEGATIVE; // important that operands[1][0][1] is inverse
+		operands[1][3][0] = 3;  // opposite motor
+		operands[1][3][1] = NEGATIVE; // important that operands[1][0][1] is inverse
+	} else if (TYPE_CORRECTION == ALTITUDE) {
+		*operands[0] = 4;
+		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
+		operands[1][0][0] = 0;  // motor
+		operands[1][0][1] = POSITIVE; // arbitrary
+		operands[1][1][0] = 2;  // opposite motor
+		operands[1][1][1] = POSITIVE; // important that operands[1][0][1] is the same
+		operands[1][2][0] = 1;  // motor
+		operands[1][2][1] = POSITIVE; // important that operands[1][0][1] is the same
+		operands[1][3][0] = 3;  // opposite motor
+		operands[1][3][1] = POSITIVE; // important that operands[1][0][1] is inverse
+	}
+ 	return operands;
 }
 
-// navi checks
-/**********************************************************************************************************************/
-int fc_isHoldingPitch(void)
+void correct(const int TYPE_CORRECTION, const int** operands)
 {
-	// nominal pitch
-	if((fc_actualPitch > (fc_desiredPitch - PITCHTOLERANCE)) && (fc_actualPitch < (fc_desiredPitch + PITCHTOLERANCE)))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
-	}
-}
+	int i, adjustment_value,
+	    theta = angle_off(TYPE_CORRECTION);
 
-int fc_isHoldingRoll(void)
-{
-	// nominal roll
-	if((fc_actualRoll > (fc_desiredRoll - ROLLTOLERANCE)) && (fc_actualRoll < (fc_desiredRoll + ROLLTOLERANCE)))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
-	}
-}
+	if (satisfactory(theta))
+		return;
 
-int fc_isHoldingAltitude(void)
-{
-	// nominal alt
-	if((fc_actualAltitude > (fc_desiredAltitude - ALTITUDETOLERANCE)) && (fc_actualAltitude < (fc_desiredAltitude + ALTITUDETOLERANCE)))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
+	for (i = 0;  i < *operands[0]; ++i) {
+		if (theta > threshold)
+			adjustment_value = get_adjustment(operands[1][i][0]) / 2;
+		else if (theta < threshold)
+			adjustment_value = get_adjustment(operands[1][i][0]) * 2;
+		else
+			return;
+
+		adjustment_value = (MAX_VAL/adjustment_value) + get_register_value(operands[1][i][0]);
+
+		adjust(operands[1][i][0], adjustment_value);
+
 	}
 }
 
-int fc_isHoldingHeading(void)
+
+void adjust(int register_index, int value)
 {
-	// nominal heading
-	if((fc_actualHeading > (fc_desiredHeading - HEADINGTOLERANCE)) && (fc_actualHeading < (fc_desiredHeading + HEADINGTOLERANCE)))
-	{
-	  return 1;
+	if (operands[1][i][0] == 0) {
+		PWMDTY0 += value / 512;
+		PWMDTY1 += value % 512;
+	} else if (operands[1][i][0] == 1) {
+		PWMDTY2 += value/512;
+		PWMDTY3 += value % 512;
+	} else if (operands[1][i][0] == 2) {
+		PWMDTY4 += value/512;
+		PWMDTY5 += value % 512;
+	} else if (operands[1][i][0] == 3) {
+		PWMDTY6 += value/512;
+		PWMDTY7 += value % 512;
 	}
-	// need positive compensation
-	else
-	{
-	  	return 0;
-	}
-}
-
-void fc_update(void)
-{
-    a_updateXRaw();
-    a_updateYRaw();
-    a_updateZRaw();
-    a_updatePitchDeg();
-    a_updateRollDeg();
-    fc_actualPitch = a_pitch;
-    fc_actualRoll = a_roll;
-    
-    b_updateTempC();
-    b_updatePressure();
-    b_updateAltitude();
-    fc_actualAltitude = b_altitude;
-    
-    m_updateXRaw();
-    m_updateYRaw();
-    m_updateZRaw();
-
-    m_updateTiltHeading(a_pitch, a_roll);
-    fc_actualHeading = m_heading;
-    
-}
-
-
-//Lower Level Utility
-/*****************************************************/
-
-void fc_capturePitch(void) 				// updates desired pitch with current pitch
-{
-    a_updateXRaw();
-    a_updateYRaw();
-    a_updateZRaw();
-
-    a_updatePitchDeg();
-    fc_actualPitch = a_pitch;
-}
-
-void fc_captureRoll(void)  				// updates desired roll with current roll
-{
-    a_updateXRaw();
-    a_updateYRaw();
-    a_updateZRaw();
-
-    a_updateRollDeg();
-    fc_actualRoll = a_roll;
-}
-
-void fc_captureAltitude(void)  				// updates desired roll with current roll
-{
-    b_updateTempC();
-    b_updatePressure();
-    b_updateAltitude();
-
-    fc_actualAltitude = b_altitude;
-}
-
-void fc_captureHeading(void)
-{
-    a_updateXRaw();
-    a_updateYRaw();
-    a_updateZRaw();
-    
-    m_updateXRaw();
-    m_updateYRaw();
-    m_updateZRaw();
-
-    m_updateTiltHeading(a_pitch, a_roll);
-    fc_actualHeading = m_heading;
-}
-
-void fc_setPitch(float p)
-{
-    fc_desiredHeading = p;
-}
-
-void fc_setRoll(float r)
-{
-    fc_desiredRoll = r;
-}
-
-void fc_setAltitude(float a)
-{
-    fc_desiredAltitude = a;
-}
-
-void fc_setHeading(float h)
-{
-    fc_desiredHeading = h;
 }
