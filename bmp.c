@@ -1,140 +1,207 @@
-/***************************************************************/
-// bmp.c
-// Author: Kyle Ashley
-// *************************************************************/
-
-
+/**********************************************/
+// Barometric Pressure Sensor Functions
+// AUTHOR: Kyle Ashley
+/**********************************************/
 #pragma once
 #include <math.h>
-#include "delays.h"
-#include "I2C.h"
 #include "bmp.h"
-#include "LCD_write.h"
-#include "accel.h"
+#include "delays.h"
+#include "i2c.h"
+#include "lcd.h"
+#include "derivative.h"      /* derivative-specific definitions */
 
-short ac1;
-short ac2;
-short ac3;
-unsigned short ac4;
-unsigned short ac5;
-unsigned short ac6;
-short b1;
-short b2;
-short mb;
-short mc;
-short md;
-short b5;
-long uP;
-long uT;
+// Device ID
+#define b_ID 0xEE
 
-long x1, x2, x3, b3, b6;
-unsigned long b4, b7;
-long p;
-long x1, x2;
-double temp;
+// Calibration Registers
+#define b_AC1 0xAA
+#define b_AC2 0xAC
+#define b_AC3 0xAE
+#define b_AC4 0xB0
+#define b_AC5 0xB2
+#define b_AC6 0xB4
+#define b_B1 0xB6
+#define b_B2 0xB8
+#define b_MB 0xBA
+#define b_MC 0xBC
+#define b_MD 0xBE
+#define OSS 0
 
-void calibrateBMP(void)
+// Control Modes
+#define TEMP_MODE 0x2E
+#define PRESSURE_MODE_0 0x34
+#define PRESSURE_MODE_1 0x74
+#define PRESSURE_MODE_2 0xB4
+#define PRESSURE_MODE_3 0xF4
+
+// Pressure at Sea Level (Pa)
+#define P_AT_SEALEVEL 102765.0738
+
+short b_ac1;
+short b_ac2;
+short b_ac3;
+unsigned short b_ac4;
+unsigned short b_ac5;
+unsigned short b_ac6;
+short b_b1;
+short b_b2;
+short b_mb;
+short b_mc;
+short b_md;
+short b_b5;
+long b_x1, b_x2, b_x3, b_b3, b_b6;
+unsigned long b_b4, b_b7;
+
+// Raw Pressure and Raw Temperature Variables
+long b_uP;
+long b_uT;
+
+// Converted pressure, temperature and alitude values
+long b_pressure;
+float b_tempC;
+float b_altitude;
+
+/******************************************************************************/
+// PRE: NONE
+// POST: Calibration variables contain values read from device ROM
+/******************************************************************************/
+void b_setup(void)
 {
-  int buffer[2];
-  
-  I2C_Read_Bytes(b_ID, b_AC1, 2, buffer);
-  ac1 = (((int)buffer[0] << 8) + buffer[1]);
-  I2C_Read_Bytes(b_ID, b_AC2, 2, buffer);
-  ac2 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_AC3, 2, buffer);
-  ac3 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_AC4, 2, buffer);
-  ac4 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_AC5, 2, buffer);
-  ac5 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_AC6, 2, buffer);
-  ac6 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_B1, 2, buffer);
-  b1 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_B2, 2, buffer);
-  b2 = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_MB, 2, buffer);
-  mb = (((int)buffer[0] << 8) + buffer[1]); 
-  I2C_Read_Bytes(b_ID, b_MC, 2, buffer);
-  mc = (((int)buffer[0] << 8) + buffer[1]);
-  I2C_Read_Bytes(b_ID, b_MD, 2, buffer);
-  md = (((int)buffer[0] << 8) + buffer[1]);      
+    int buffer[2];
+
+    // Request Calibration ROM reads
+    I2C_Read_Bytes(b_ID, b_AC1, 2, buffer);
+    b_ac1 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_AC2, 2, buffer);
+    b_ac2 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_AC3, 2, buffer);
+    b_ac3 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_AC4, 2, buffer);
+    b_ac4 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_AC5, 2, buffer);
+    b_ac5 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_AC6, 2, buffer);
+    b_ac6 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_B1, 2, buffer);
+    b_b1 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_B2, 2, buffer);
+    b_b2 = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_MB, 2, buffer);
+    b_mb = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_MC, 2, buffer);
+    b_mc = (((int)buffer[0] << 8) + buffer[1]);
+    I2C_Read_Bytes(b_ID, b_MD, 2, buffer);
+    b_md = (((int)buffer[0] << 8) + buffer[1]);
 }
 
 /* Control Functions */
-void setBMPControlMode(unsigned int mode) 
+/******************************************************************************/
+// PRE: NONE
+// POST: Sets Control Mode of bmp to read requested values (temp/pressure)
+/******************************************************************************/
+void b_setControlMode(unsigned int mode)
 {
     I2C_Write_Byte(b_ID, 0xF4, mode);
     LCDDelayDATA(2200);
-}		
+}
 
-long getBMPRawTemperature() 
+/******************************************************************************/
+// PRE: NONE
+// POST: Reads raw temperature value from bmp
+// VAL TO UPDATE: b_uT
+/******************************************************************************/
+void b_updateRawTemperature(void)
 {
     int buffer[2];
     I2C_Read_Bytes(b_ID, 0xF6, 2, buffer);
-    return (((long)buffer[0] << 8 | buffer[1]));
+    b_uT = (((long)buffer[0] << 8 | buffer[1]));
 }
 
-long getBMPRawPressure()
+/******************************************************************************/
+// PRE: NONE
+// POST: Reads raw pressure value from bmp
+// VAL TO UPDATE: b_uP
+/******************************************************************************/
+void b_updateRawPressure(void)
 {
     int buffer[3];
     I2C_Read_Bytes(b_ID, 0xF6, 3, buffer);
-    return (long)((((unsigned long) buffer[0] << 16) | ((unsigned long) buffer[1] << 8) | ((unsigned long) buffer[2])) >> (8-OSS));
+    b_uP = (long)((((unsigned long) buffer[0] << 16) | ((unsigned long) buffer[1] << 8) | ((unsigned long) buffer[2])) >> (8-OSS));
 }
-	
-double getBMPTempC()
-{   
-    /*
-    long x1, x2;
-    long temp;
-    */
-    uT = getBMPRawTemperature();
-    x1 = (((uT - (long)ac6) * (long)ac5) >> 15);
-    x2 = ((long)mc << 11) / (x1 + md);
-    b5 = (long)x1 + x2;
-    temp = (float)(((b5 + 8) >> 4) / 10.0);
-    return temp;
+
+/******************************************************************************/
+// PRE: NONE
+// POST: Reads raw temperature values and calculates true temperature (C)
+// VAL TO UPDATE: b_tempC
+/******************************************************************************/
+void b_updateTempC(void)
+{
+    // Request Raw Temperature Reading
+    b_updateRawTemperature();
+
+    // Calculate X1, X2, B5
+    b_x1 = (((b_uT - (long)b_ac6) * (long)b_ac5) >> 15);
+    b_x2 = ((long)b_mc << 11) / (b_x1 + b_md);
+    b_b5 = (long)b_x1 + b_x2;
+
+    // Calculate Converted Temperature (C)
+    b_tempC = (float)(((b_b5 + 8) >> 4) / 10.0);
 }
-		
-long getBMPPressure()
-{   
-    uP = getBMPRawPressure();
-	
-  	b6 = b5 - 4000;
-  	
+
+/******************************************************************************/
+// PRE: b_updateTempC has been called and tempC contains updated value
+// POST: Reads raw pressure value from bmp and calculates true pressure (Pa)
+// VAL TO UPDATE: b_pressure
+/******************************************************************************/
+void b_updatePressure(void)
+{
+    // Request Raw Pressure Reading
+    b_updateRawPressure();
+
+    //Calculate B6
+  	b_b6 = b_b5 - 4000;
+
     // Calculate B3
-    x1 = ((long)b2 * ((b6 * b6)>>12))>>11;
-    x2 = ((long)ac2 * b6)>>11;
-    x3 = x1 + x2;
-    b3 = ((((long)ac1*4 + x3)<<OSS) + 2)>>2;
+    b_x1 = ((long)b_b2 * ((b_b6 * b_b6)>>12))>>11;
+    b_x2 = ((long)b_ac2 * b_b6)>>11;
+    b_x3 = b_x1 + b_x2;
+    b_b3 = ((((long)b_ac1*4 + b_x3)<<OSS) + 2)>>2;
 
     // Calculate B4
-    x1 = ((long)ac3 * b6)>>13;
-    x2 = ((long)b1 * ((b6 * b6)>>12))>>16;
-    x3 = ((x1 + x2) + 2)>>2;
-    b4 = ((unsigned long)ac4 * (unsigned long)(x3 + 32768))>>15;
+    b_x1 = ((long)b_ac3 * b_b6)>>13;
+    b_x2 = ((long)b_b1 * ((b_b6 * b_b6)>>12))>>16;
+    b_x3 = ((b_x1 + b_x2) + 2)>>2;
+    b_b4 = ((unsigned long)b_ac4 * (unsigned long)(b_x3 + 32768))>>15;
 
-    b7 = ((unsigned long)uP - b3) * (unsigned long)(50000>>OSS);
-    if (b7 < 0x80000000)
-      p = (b7<<1)/b4;
+    // Calculate Pressure
+    b_b7 = ((unsigned long)b_uP - b_b3) * (unsigned long)(50000>>OSS);
+    if (b_b7 < 0x80000000)
+      b_pressure = (b_b7<<1)/b_b4;
     else
-      p = (b7/b4)<<1;
-
-    x1 = (p>>8) * (p>>8);
-    x1 = (x1 * 3038)>>16;
-    x2 = (-7357 * p)>>16;
-    p += ((x1 + x2 + (long)3791)>>4);
-    return p;
+      b_pressure = (b_b7/b_b4)<<1;
+    b_x1 = (b_pressure>>8) * (b_pressure>>8);
+    b_x1 = (b_x1 * 3038)>>16;
+    b_x2 = (-7357 * b_pressure)>>16;
+    b_pressure += ((b_x1 + b_x2 + (long)3791)>>4);
 }
 
-float calcAltitude(long pressure)
+/******************************************************************************/
+// PRE: b_updateTempC and b_updatePressure have been called and respective
+//      readings have been updated
+// POST: Calculates true altitude relative to relative pressure at Sea Level
+// VAL TO UPDATE: b_altitude
+/******************************************************************************/
+void b_updateAltitude(void)
 {
     float A, B, C;
-    A = (float)pressure/102265.0738;
+
+    // Calculate Altitude after receiving raw pressure reading
+    A = (float)b_pressure/P_AT_SEALEVEL;
     B = (float)1/5.25588;
     C = (float)pow(A,B);
     C = (float)1 - C;
     C = (float)C /0.0000225577;
 
-    return C;
+    // Assign converted altiutude value
+    b_altitude = C;
 }
