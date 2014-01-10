@@ -1,30 +1,39 @@
 /*********************************************************/
 // mag.h
-// Author: Kyle Ashley
-// Description: For use with HMC5883 magnetometer and HCS12
+// AUTHOR: Kyle Ashley
+// Description: For use with HMC5883L magnetometer and
+// digital compass alongside HCS12 uP
 /*********************************************************/
+#ifndef MAG_H_
+#define MAG_H_
 
-#define m_ID 0x3C
-#define m_CONFIG1 0x00 
-#define m_CONFIG2 0x01
-#define m_MODE 0x02
-#define m_xH 0x03
-#define m_xL 0x04
-#define m_zH 0x05
-#define m_zL 0x06
-#define m_yH 0x07
-#define m_yL 0x08
-#define m_STAT 0x09
-#define m_IDA 0x0A
-#define m_IDB 0x0B
-#define m_IDC 0x0C
+// MAG Associated Variables
+/******************************************************************************/
 
-void setupMag(float);
-void set_m_Scale(float);
-void set_m_MeasurementMode(unsigned int);
-double getMagX(void);
-double getMagY(void);
-double getMagZ(void);
-double getHeading(double, double);
-double getTiltHeading(double, double, double, double, double);
+// Raw Readings
+extern float m_xRaw;                    // contain most recent raw magnetometer sensor reads
+extern float m_yRaw;
+extern float m_zRaw;
 
+extern float m_scale;                   // scalar for raw mag readings
+extern float m_heading;                 // calculated tilt-corrected heading (Deg)
+
+// MAG Associated Functions
+/******************************************************************************/
+void m_setup(float);                    // initilizes mag with given resolution
+                                        //(.88, 1.3, 1.9, 2.5, 4.0, 4.7, 5.6, 8.1)
+
+void m_setMeasurementMode(unsigned int);   // sets measurement mode (continuous/single shot)
+
+// Raw Sensor Reads
+void m_updateXRaw(void);                   // updates the associated raw mag readings
+void m_updateYRaw(void);
+void m_updateZRaw(void);
+
+// Heading Calculation and Updates
+void m_updateTiltHeading(float, float);   // Given pitch and roll degrees, updates tilt corrected heading
+/* Accesory */
+void m_updateHeading(void);               // updates heading if tilt is past 40Deg
+
+
+#endif
