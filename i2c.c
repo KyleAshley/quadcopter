@@ -1,17 +1,16 @@
-/*****************************************************************************/
-// i2c.c
-// Author: Kyle Ashley
-/*****************************************************************************/
-
+/***************************************************/
+// IIC Functions
+// AUTHOR: Kyle Ashley
+// Description: Enables easy IIC protocol communication
+// on HC9S12 uP and asscoiated devices
+/***************************************************/
 #pragma once
 #include "i2c.h"
 #include <hidef.h>          /* common defines and macros */
-#include "derivative.h"      /* derivative-specific definitions */
 #include <math.h>
-
-#include "LCD_Write.h"
+#include "derivative.h"      /* derivative-specific definitions */
+#include "lcd.h"
 #include "delays.h"
-#include "accel.h"
 
 #define IBEN 0x80
 #define IBIE 0x40
@@ -105,104 +104,6 @@ void I2C_Write_Byte(unsigned char slaveAddress, unsigned char internalAddress, u
   IBCR &= ~MSSL;                     // send STOP bit
 }
 
-long I2C_Read_2Bytes(unsigned char slaveAddress, unsigned char internalAddress)
-{
-  long readVal;
-  unsigned char xH, xL;
-  unsigned char temp;
-  
-  while(IBSR & IBB);                  // wait for idle
-  
-  // Send address the slave device
-  IBCR = IBEN | TXRX | MSSL;          // take bus
-  IBDR = slaveAddress;                // write slave address
-  while(!(IBSR & IBIF));              // wait for transmission
-  IBSR = IBIF;                        // clear IBIF flag
-  while((IBSR & RXAK));
-  
-  // Send address of read register
-  IBDR = internalAddress;    // set register address                  
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  while((IBSR & RXAK));
-  
-  IBCR |= RSTA;                       //repeat start
-  
-  // Send register read address
-  IBDR = (slaveAddress | 0x01);      // send slave address to read
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  while((IBSR & RXAK));
-  
-  IBCR &= ~(TXAK | TXRX);                     // prepare to ACK and RX
-  temp = IBDR;                                // read dummy value / trigger read
-  while(!(IBSR & IBIF));                      // wait for transfer
-  IBSR = IBIF;
-  
-  IBCR |= TXAK;                                
-  xH = IBDR;                                  // Read the value                                                                                          
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  
-  // End Transmission
-  IBCR &= ~MSSL;                              // send STOP bit
-  xL = IBDR;
-  
-  readVal = (((unsigned long)xH << 8) | xL);
-  return (long)readVal;
-}
-
-
-int I2C_Read_3Bytes(unsigned char slaveAddress, unsigned char internalAddress)
-{
-  int readVal;
-  unsigned char xH, xM, xL, temp;
-  
-  while(IBSR & IBB);                  // wait for idle
-  
-  // Send address the slave device
-  IBCR = IBEN | TXRX | MSSL;          // take bus
-  IBDR = slaveAddress;                // write slave address
-  while(!(IBSR & IBIF));              // wait for transmission
-  IBSR = IBIF;                        // clear IBIF flag
-  while((IBSR & RXAK));
-  
-  // Send address of read register
-  IBDR = internalAddress;     // set register address                  
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  while((IBSR & RXAK));
-  
-  IBCR |= RSTA;                       //repeat start
-  
-  // Send register read address
-  IBDR = (slaveAddress | 0x01);      // send slave address to read
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  while((IBSR & RXAK));
-  
-  IBCR &= ~(TXAK | TXRX);             // prepare to ACK and RX
-  temp = IBDR;                        // read dummy value
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-     
-  xH = IBDR;                          // read dummy value
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  
-  IBCR |= TXAK;                      // prepare to NACK 
-  xM = IBDR;                        // read dummy value
-  while(!(IBSR & IBIF));
-  IBSR = IBIF;
-  
-  // End Transmission
-  IBCR &= ~MSSL;                     // send STOP bit
-  xL = IBDR;
-  
-  readVal = (((unsigned long)xH << 16) | ((unsigned long)xM << 8) | ((unsigned long)xL >> (8 - OSS)));
-  return readVal;
-}
-
 void I2C_Read_Bytes(unsigned char slaveAddress, unsigned char internalAddress, int num, int* buffer)
 {
   unsigned char temp;
@@ -253,3 +154,5 @@ void I2C_Read_Bytes(unsigned char slaveAddress, unsigned char internalAddress, i
   IBCR &= ~MSSL;                     // send STOP bit
   buffer[num-1] = IBDR;
 }
+
+
