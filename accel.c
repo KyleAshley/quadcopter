@@ -5,179 +5,168 @@
 #pragma once
 #include <math.h>
 #include <stdio.h>
-#include "I2C.h"
+#include "i2c.h"
 #include "accel.h"
-#include "LCD_write.h"
+#include "lcd.h"
 #include "delays.h"
+
+// Device ID
+#define a_ID 0xA6
+
+// Device Control Register Addresses
+#define a_THRESH_TAP 0x1D
+#define a_OFSX 0x1E
+#define a_OFSY 0x1F
+#define a_OFSZ 0x20
+#define a_DUR 0x21
+#define a_LATENT 0x22
+#define a_WINDOW 0x23
+#define a_THRESH_ACT 0x24
+#define a_THRESH_INACT 0x25
+#define a_TIME_INACT 0x26
+#define a_ACT_INACT_CTL 0x27
+#define a_THRESH_FF 0x28
+#define a_TIME_FF 0x29
+#define a_TAP_AXES 0x2A
+#define a_ACT_TAP_STATUS 0x2B
+#define a_BW_RATE 0x2C
+#define a_POWER_CTL 0x2D
+#define a_INT_ENABLE 0x2E
+#define a_INT_MAP 0x2F
+#define a_INT_SOURCE 0x30
+#define a_DATA_FORMAT 0x31
+#define a_FIFO_CTL 0x38
+#define a_FIFO_STATUS 0x39
+
+// Device Result Register Addresses
+#define a_DATAX0 0x32
+#define a_DATAX1 0x33
+#define a_DATAY0 0x34
+#define a_DATAY1 0x35
+#define a_DATAZ0 0x36
+#define a_DATAZ1 0x37
 
 #define M_PI 3.14159265358
 
-// initializes the accelerometer
-void setupAccel()
+/* Associated Sensor Variables */
+// Raw Accelerometer Readings
+float a_xRaw;
+float a_yRaw;
+float a_zRaw;
+
+// Converted Roll and Pitch Angles
+float a_roll;
+float a_pitch;
+
+/* BEGIN FUNCTIONS */
+/******************************************************************************/
+// PRE: NONE
+// POST: Initializes the accelerometer for +/- 2g readings
+/******************************************************************************/
+void a_setup(void)
 {
 	I2C_Write_Byte(a_ID, a_POWER_CTL, 0x08);
+	a_setRange(2);
 }
 
-// sets the range of sensor values
-void setAccelRange(int range)
+/******************************************************************************/
+// PRE: NONE
+// POST: Sets sensitivity of the accelerometer for +/- 2g readings
+/******************************************************************************/
+void a_setRange(int range)
 {
 	switch(range)
 	{
-		case 16: 
+		case 16:
 			I2C_Write_Byte(a_ID, a_DATA_FORMAT, 0x03);
 			break;
-		case 8: 
+		case 8:
 			I2C_Write_Byte(a_ID, a_DATA_FORMAT, 0x02);
 			break;
-		case 4: 
+		case 4:
 			I2C_Write_Byte(a_ID, a_DATA_FORMAT, 0x01);
 			break;
-		case 2: 
+		case 2:
 			I2C_Write_Byte(a_ID, a_DATA_FORMAT, 0x00);
 			break;
 	}
 }
 
-// raw X value from accelerometer
-double getAccelX()
+/******************************************************************************/
+// PRE: NONE
+// POST: Requests new raw X reading and updates corresponding variable
+/******************************************************************************/
+void a_updateXRaw(void)
 {
-	   double x;
-     unsigned char xH, xL;
-     xH = I2C_Read_Byte(a_ID, a_DATAX1);
-     xL = I2C_Read_Byte(a_ID, a_DATAX0);
-     x = ((xH << 8) | xL);
-     return x;
+	float x;
+     	unsigned char xH, xL;
+     	xH = I2C_Read_Byte(a_ID, a_DATAX1);
+     	xL = I2C_Read_Byte(a_ID, a_DATAX0);
+     	x = ((xH << 8) | xL);
+     	a_xRaw = x;
 }
 
-// raw Y value from accelerometer
-double getAccelY()
+/******************************************************************************/
+// PRE: NONE
+// POST: Requests new raw Y reading and updates corresponding variable
+/******************************************************************************/
+void a_updateYRaw(void)
 {
-	   double y;
-     unsigned char yH, yL;
-     yH = I2C_Read_Byte(a_ID, a_DATAY1);
-     yL = I2C_Read_Byte(a_ID, a_DATAY0);
-     y = ((yH << 8) | yL);
-     return y;
+	float y;
+     	unsigned char yH, yL;
+     	yH = I2C_Read_Byte(a_ID, a_DATAY1);
+     	yL = I2C_Read_Byte(a_ID, a_DATAY0);
+     	y = ((yH << 8) | yL);
+     	a_yRaw = y;
 
 }
 
-// raw Z value from accelerometer
-double getAccelZ()
+/******************************************************************************/
+// PRE: NONE
+// POST: Requests new raw Z reading and updates corresponding variable
+/******************************************************************************/
+void a_updateZRaw(void)
 {
-	   double z;
-     unsigned char zH, zL;
-     zH = I2C_Read_Byte(a_ID, a_DATAZ1);
-     zL = I2C_Read_Byte(a_ID, a_DATAZ0);
-     z = ((zH << 8) | zL);
-     return z;
+	float z;
+     	unsigned char zH, zL;
+     	zH = I2C_Read_Byte(a_ID, a_DATAZ1);
+	zL = I2C_Read_Byte(a_ID, a_DATAZ0);
+     	z = ((zH << 8) | zL);
+     	a_zRaw = z;
 }
 
-// returns the Pitch in Degrees
-double getAccelPitchDeg(double faY, double faZ)
+/******************************************************************************/
+// PRE: Raw values have been read and updated from accelerometer
+// POST: Converts current raw values into absolute pitch degrees and updates
+// corresponding variable
+/******************************************************************************/
+void a_updatePitchDeg(void)
 {
-    double pitch = -(atan2(-faY, faZ) * 180.0)/M_PI;
-    return pitch;
+    	float pitch = -((atan2(-a_yRaw, a_zRaw)) * 180.0)/M_PI;
+    	a_pitch = pitch;
 }
 
-// returns the Roll in Degrees
-double getAccelRollDeg(double faX, double faY, double faZ) 
+/******************************************************************************/
+// PRE: Raw values have been read and updated from accelerometer
+// POST: Converts current raw values into absolute roll degrees and updates
+// corresponding variable
+/******************************************************************************/
+void a_updateRollDeg(void)
 {
-  double roll = (atan2(faX, sqrt(faY * faY + faZ * faZ)) * 180.0)/M_PI;
-  return roll;
+  	float roll = ((atan2(a_xRaw, sqrt(a_yRaw * a_yRaw + a_zRaw * a_zRaw))) * 180.0)/M_PI;
+  	a_roll = roll;
 }
 
-double getAccelPitchRad(double faY, double faZ)
-{
-    double pitch = -(atan2(-faY, faZ));
-    return pitch;
-}
 
-// returns the Roll in Degrees
-double getAccelRollRad(double faX, double faY, double faZ) 
-{
-  double roll = (atan2(faX, sqrt(faY * faY + faZ * faZ)));
-  return roll;
-}
-
-// filters a value through a Low Pass Filter
-double lpFilter(double val, double old_fVal, double ALPHA)
+/******************************************************************************/
+// PRE: NONE
+// POST: Variable Average Filter for successive sensor readings
+/******************************************************************************/
+/*
+double a_lpFilter(double val, double old_fVal, double ALPHA)
 {
   double fVal = (val * ALPHA) + (old_fVal * (1.0 - ALPHA));
   return fVal;
 }
-
-// prints three raw accleration values to the LCD
-void output_accelXYZ(double ax, double ay, double az)
-{
-      unsigned char strx[5];
-      unsigned char stry[5];
-      unsigned char strz[5];
-      unsigned int cx, cy, cz;
-      unsigned int ctr;
-      
-      cx = 0;
-      cy = 0;
-      cz = 0;
-
-      sprintf(strx,"%5.2f",ax);        // print x
-      while (strx[cx] != '\0') 
-  	  {    
-        DATWRTFIRST(strx[cx]);
-        LCDDelayDATA(DAT);
-        cx++;
-      }
-        
-      DATWRTFIRST(' ');             // print y on first line after x
-      sprintf(stry,"%5.2f",ay);
-      while (stry[cy] != '\0') 
-    	{    
-        DATWRTFIRST(stry[cy]);
-        LCDDelayDATA(DAT);
-        cy++;
-      }
-      
-      COMWRTFIRST(0xC0);
-                                     // skip a line and print z
-      sprintf(strz,"%5.2f",az);
-      while (strz[cz] != '\0') 
-    	{    
-        DATWRTFIRST(strz[cz]);
-        LCDDelayDATA(DAT);
-        cz++;
-      }
-        
-      for(ctr = 0; ctr < 5; ctr++)
-      { 
-        LCDDelayDATA(TCHAR * 8);
-      }
-      COMWRTFIRST(0x01);
-      LCDDelayDATA(TCHAR); 
-}
-
-// prints decimal angle value to the LCD
-void output_accelANGLE(double angle)
-{  
-    unsigned int cR = 0;
-    unsigned char strAngle[6];
-    
-    sprintf(strAngle,"%3.1f",angle);
-      while (strAngle[cR] != '\0') 
-  	  {    
-        DATWRTFIRST(strAngle[cR]);
-        LCDDelayDATA(DAT);
-        cR++;
-      }
-}
-
-double constrainRad(double rad)
-{
-  if(rad < 0)
-     rad += 2*M_PI;
-    
-  // Check for wrap due to addition of declination.
-  else if(rad > 2*M_PI)
-     rad -= 2*M_PI;
-  
-  return rad;
-}
+*/
   
