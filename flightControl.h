@@ -14,7 +14,7 @@ void fc_initialize_motors(void);
 int** fc_get_motors(const int);
 void fc_correct(const int, const int**);
 
-void fc_adjustDTY(int, int );
+void fc_adjustDTY(int, int);
 int fc_isNominal(const int, float );
 float fc_angle_off(const int);
 long fc_getCurrentPWMDTY(int);

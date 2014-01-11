@@ -3,6 +3,8 @@
 // AUTHOR: Kyle Ashley
 // Data and functions combining sensor output
 /********************************************************/
+#pragma once
+#include <stdlib.h>
 #include "flightControl.h"
 #include "mag.h"
 #include "accel.h"
@@ -11,6 +13,7 @@
 #include "lcd.h"
 #include "delays.h"
 #include "distanceSensor.h"
+#include "derivative.h"
 
 /* Define:
  *     angle_off(ENUM TYPE) - ENUM TYPE 0=PITCH, 1=ROLL, 2=HEADING, 3=ALTITUDE
@@ -39,10 +42,18 @@
 #define ALTITUDEGAIN    1.5
 #define HEADINGGAIN     1.5
 
+#ifndef ALTTHRESH
 #define ALTTHRESH       0.2         // meters
+#endif
+#ifndef HEADINGTHRESH
 #define HEADINGTHRESH   2.0         // degrees
+#endif
+#ifndef PITCHTHRESH
 #define PITCHTHRESH     2.0         // degrees
+#endif
+#ifndef ROLLTHRESH
 #define ROLLTHRESH      2.0         // degrees
+#endif
 
 #define MINDTY 6000
 #define MAXDTY 12000
@@ -94,43 +105,57 @@ void fc_initialize_motors()
 /*******************************************************************************/
 int** fc_get_motors(const int TYPE_CORRECTION)
 {
-	int **operands = malloc(sizeof(int) + sizeof(int*));
+  int **operands;
+  int numMotors, i;
+  
 	if (TYPE_CORRECTION == PITCH) {
-		*operands[0] = 2;
-		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
-		operands[1][0][0] = 0;              // positive correction of motor 0
-		operands[1][0][1] = POSITIVE;
-		operands[1][1][0] = 2;              // negative correction of motor 2
-		operands[1][1][1] = NEGATIVE;       // important that operands[1][0][1] is inverse
+	  numMotors = 2;
+  	operands = malloc(sizeof(int*) * numMotors);
+  	for(i = 0; i<numMotors; i++){  
+      operands[i] = malloc(sizeof(int) * 2);
+    }
+  	operands[0][0] = 0;              // positive correction of motor 0
+  	operands[0][1] = POSITIVE;
+  	operands[1][0] = 2;              // negative correction of motor 2
+  	operands[1][1] = NEGATIVE;       // important that operands[1][0][1] is inverse
 	} else if (TYPE_CORRECTION == ROLL) {
-		*operands[0] = 2;
-		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
-		operands[1][0][0] = 1;              // positive correction of motor 1
-		operands[1][0][1] = POSITIVE;
-		operands[1][1][0] = 3;              // negative correction of motor 3
-		operands[1][1][1] = NEGATIVE;
-    } else if (TYPE_CORRECTION == ALTITUDE) {
-		*operands[0] = 4;
-		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
-		operands[1][0][0] = 0;              // positive correction of motor 0
-		operands[1][0][1] = POSITIVE;
-		operands[1][1][0] = 2;              // positive correction of motor 2
-		operands[1][1][1] = POSITIVE;
-		operands[1][2][0] = 1;              // positive correction of motor 1
-		operands[1][2][1] = POSITIVE;
-		operands[1][3][0] = 3;              // positive correction of motor 3
-		operands[1][3][1] = POSITIVE;
+    	numMotors = 2;
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
+        operands[i] = malloc(sizeof(int) * 2);
+      }
+  		operands[0][0] = 1;              // positive correction of motor 1
+  		operands[0][1] = POSITIVE;
+  		operands[1][0] = 3;              // negative correction of motor 3
+  		operands[1][1] = NEGATIVE;
+  } else if (TYPE_CORRECTION == ALTITUDE) {
+  		numMotors = 4;
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
+        operands[i] = malloc(sizeof(int) * 2);
+      }
+  		operands[0][0] = 0;              // positive correction of motor 0
+  		operands[0][1] = POSITIVE;
+  		operands[1][0] = 2;              // positive correction of motor 2
+  		operands[1][1] = POSITIVE;
+  		operands[2][0] = 1;              // positive correction of motor 1
+  		operands[2][1] = POSITIVE;
+  		operands[3][0] = 3;              // positive correction of motor 3
+  		operands[3][1] = POSITIVE;
 	} else if (TYPE_CORRECTION == HEADING) {
-		*operands[0] = 4;
-		operands[1] = malloc((sizeof(unsigned int) + sizeof(int)) * *operands[0]);
-		operands[1][0][0] = 0;              // positive correction of motor 0
-		operands[1][0][1] = POSITIVE;
-		operands[1][1][0] = 2;              // positive correction of motor 2
-		operands[1][1][1] = POSITIVE;
-		operands[1][2][0] = 1;              // negative correction of motor 1
-		operands[1][2][1] = NEGATIVE;
-		operands[1][3][0] = 3;              // negative correction of motor 3
-		operands[1][3][1] = NEGATIVE;
+  		numMotors = 4;
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
+        operands[i] = malloc(sizeof(int) * 2);
+      }
+  		operands[0][0] = 0;              // positive correction of motor 0
+  		operands[0][1] = POSITIVE;
+  		operands[1][0] = 2;              // positive correction of motor 2
+  		operands[1][1] = POSITIVE;
+  		operands[2][0] = 1;              // negative correction of motor 1
+  		operands[2][1] = NEGATIVE;
+  		operands[3][0] = 3;              // negative correction of motor 3
+  		operands[3][1] = NEGATIVE;
 	}
  	return operands;
 }
@@ -142,8 +167,10 @@ int** fc_get_motors(const int TYPE_CORRECTION)
 /*******************************************************************************/
 void fc_correct(const int TYPE_CORRECTION, const int** operands)
 {
-	int i, adjustment_value;
+	int i, adjustment_value, numMotors;
 	float theta;
+	
+	numMotors = sizeof(operands) / (sizeof(int) * 2);
 
 	// get Degrees off in Pitch, Roll etc.
     theta = fc_angle_off(TYPE_CORRECTION);
@@ -152,17 +179,17 @@ void fc_correct(const int TYPE_CORRECTION, const int** operands)
 	if (fc_isNominal(TYPE_CORRECTION, theta))
 		return;
 
-	for (i = 0;  i < *operands[0]; ++i) {
+	for (i = 0;  i < numMotors; ++i) {
 
 	    // adjustment proportional to theta * GAIN
-	    adjustment_value =  (theta * fc_gainOf(TYPE_CORRECTION)) * operands[1][i][1];
+	    adjustment_value =  (theta * fc_gainOf(TYPE_CORRECTION)) * operands[i][1];
 
         // Over/Under throttle protection
-        if((adjustment_value + fc_getCurrentPWMDTY(operands[1][i][0]) > MAXDTY) || (adjustment_value + fc_getCurrentPWMDTY(operands[1][i][0]) < MINDTY))
+        if((adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) > MAXDTY) || (adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) < MINDTY))
             adjustment_value = 0;
 
         // adjust DutyFactor of given channel accordingly
-		fc_adjustDTY(operands[1][i][0], adjustment_value);
+		fc_adjustDTY(operands[i][0], adjustment_value);
 	}
 }
 
@@ -172,16 +199,16 @@ void fc_correct(const int TYPE_CORRECTION, const int** operands)
 /*******************************************************************************/
 void fc_adjustDTY(int pwmChannel, int value)
 {
-	if (operands[1][i][0] == 0) {
+	if (pwmChannel == 0) {
 		PWMDTY0 += value / 512;
 		PWMDTY1 += value % 512;
-	} else if (operands[1][i][0] == 1) {
+	} else if (pwmChannel == 1) {
 		PWMDTY2 += value /512;
 		PWMDTY3 += value % 512;
-	} else if (operands[1][i][0] == 2) {
+	} else if (pwmChannel == 2) {
 		PWMDTY4 += value / 512;
 		PWMDTY5 += value % 512;
-	} else if (operands[1][i][0] == 3) {
+	} else if (pwmChannel == 3) {
 		PWMDTY6 += value / 512;
 		PWMDTY7 += value % 512;
 	}

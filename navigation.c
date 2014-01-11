@@ -7,12 +7,8 @@
 #include "delays.h"
 #include "distanceSensor.h"
 
-#define ALTITUDETOLERANCE 5		// meters
-#define HEADINGTOLERANCE 6.0	//degrees
-#define PITCHTOLERANCE 6.0		// degrees
-#define ROLLTOLERANCE 6.0		// degrees
-
 #define BR 0x1F                 // 100kHz BR
+#define TCHAR 8000    
 
 /******************************************************************************/
 // Flight Control Variables

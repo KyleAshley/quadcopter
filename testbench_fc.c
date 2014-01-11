@@ -14,6 +14,10 @@
 #include "delays.h"
 #include "flightControl.h"
 
+#define PITCH     0
+#define ROLL      1
+#define ALTITUDE  2
+#define HEADING   3
 
 #define BR 0x1F                 // 100kHz BR
 #define ALPHA 0.8
