@@ -11,14 +11,14 @@
 // First three must be done in order
 /*******************************************************************************/
 void fc_initialize_motors(void);
-int** fc_get_motors(const int);
-void fc_correct(const int, const int**);
+int** fc_get_motors(int);
+void fc_correct(int, int**);
 
-void fc_adjustDTY(int, int);
-int fc_isNominal(const int, float );
-float fc_angle_off(const int);
+void fc_adjustDuty(int, int);
+int fc_isNominal(int, float);
+float fc_angle_off(int);
 long fc_getCurrentPWMDTY(int);
-float fc_gainOf(const int);
+float fc_gainOf(int);
 
 
 

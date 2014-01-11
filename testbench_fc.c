@@ -7,12 +7,13 @@
 #include <hidef.h>      /* common defines and macros */
 #include <stdio.h>
 #include <math.h>
+#include "flightControl.h"
 #include "derivative.h"      /* derivative-specific definitions */
 #include "navigation.h"
 #include "lcd.h"
 #include "i2c.h"
 #include "delays.h"
-#include "flightControl.h"
+
 
 #define PITCH     0
 #define ROLL      1
@@ -25,6 +26,8 @@
 
 void main(void) {
   /* put your own code here */
+  
+  // Contains motor correction relationships
   int** pitchOperands;
   int** rollOperands;
   int** altitudeOperands;
@@ -55,7 +58,7 @@ void main(void) {
     nav_setup();
     nav_setPitch(0.0);
     nav_setRoll(0.0);
-    nav_setAltitude(500.0);
+    nav_setAltitude(30.0);
     nav_setHeading(0.0);
 
 	for(;;)

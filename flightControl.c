@@ -3,7 +3,6 @@
 // AUTHOR: Kyle Ashley
 // Data and functions combining sensor output
 /********************************************************/
-#pragma once
 #include <stdlib.h>
 #include "flightControl.h"
 #include "mag.h"
@@ -100,8 +99,8 @@ void fc_initialize_motors()
 }
 
 /*******************************************************************************/
-// Defines motor compensations in each of four cases where sensor readings
-// differ from dersired value, pitch, roll, heading and altitude
+// Defines motor compensations in each of four cases, pitch, roll, heading and altitude
+// where sensor readings differ from dersired value
 /*******************************************************************************/
 int** fc_get_motors(const int TYPE_CORRECTION)
 {
@@ -109,31 +108,31 @@ int** fc_get_motors(const int TYPE_CORRECTION)
   int numMotors, i;
   
 	if (TYPE_CORRECTION == PITCH) {
-		numMotors = 2;
+		  numMotors = 2;
   		operands = malloc(sizeof(int*) * numMotors);
   		for(i = 0; i<numMotors; i++){  
       			operands[i] = malloc(sizeof(int) * 2);
-    		}
+    	}
   		operands[0][0] = 0;              // positive correction of motor 0
   		operands[0][1] = POSITIVE;
   		operands[1][0] = 2;              // negative correction of motor 2
   		operands[1][1] = NEGATIVE;       // important that operands[1][0][1] is inverse
 	} else if (TYPE_CORRECTION == ROLL) {
-    		numMotors = 2;
-    		operands = malloc(sizeof(int*) * numMotors);
-    		for(i = 0; i<numMotors; i++){  
+    	numMotors = 2;
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
         		operands[i] = malloc(sizeof(int) * 2);
-      		}
+      }
   		operands[0][0] = 1;              // positive correction of motor 1
   		operands[0][1] = POSITIVE;
   		operands[1][0] = 3;              // negative correction of motor 3
   		operands[1][1] = NEGATIVE;
-  	} else if (TYPE_CORRECTION == ALTITUDE) {
+  } else if (TYPE_CORRECTION == ALTITUDE) {
   		numMotors = 4;
-    		operands = malloc(sizeof(int*) * numMotors);
-    		for(i = 0; i<numMotors; i++){  
-	 	operands[i] = malloc(sizeof(int) * 2);
-      		}
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
+	 	  operands[i] = malloc(sizeof(int) * 2);
+      }
   		operands[0][0] = 0;              // positive correction of motor 0
   		operands[0][1] = POSITIVE;
   		operands[1][0] = 2;              // positive correction of motor 2
@@ -144,10 +143,10 @@ int** fc_get_motors(const int TYPE_CORRECTION)
   		operands[3][1] = POSITIVE;
 	} else if (TYPE_CORRECTION == HEADING) {
   		numMotors = 4;
-    		operands = malloc(sizeof(int*) * numMotors);
-    		for(i = 0; i<numMotors; i++){  
+    	operands = malloc(sizeof(int*) * numMotors);
+    	for(i = 0; i<numMotors; i++){  
         		operands[i] = malloc(sizeof(int) * 2);
-      		}
+      }
   		operands[0][0] = 0;              // positive correction of motor 0
   		operands[0][1] = POSITIVE;
   		operands[1][0] = 2;              // positive correction of motor 2
@@ -165,15 +164,20 @@ int** fc_get_motors(const int TYPE_CORRECTION)
 // checks desired DOF against desired values in Nav and corrects PWMDTY of
 // appropriate ESC Inputs.
 /*******************************************************************************/
-void fc_correct(const int TYPE_CORRECTION, const int** operands)
+void fc_correct(int TYPE_CORRECTION, int** operands)
 {
 	int i, adjustment_value, numMotors;
 	float theta;
 	
+	static int pitchGain[40] = 1;
+  static int rollGain[40] = 1;
+  static int altitudeGain[40] = 1;
+  static int headingGain[40] = 1;
+	
 	numMotors = sizeof(operands) / (sizeof(int) * 2);
 
 	// get Degrees off in Pitch, Roll etc.
-    	theta = fc_angle_off(TYPE_CORRECTION);
+	theta = fc_angle_off(TYPE_CORRECTION);
 
     	// do nothing if nominal
 	if (fc_isNominal(TYPE_CORRECTION, theta))
@@ -182,14 +186,14 @@ void fc_correct(const int TYPE_CORRECTION, const int** operands)
 	for (i = 0;  i < numMotors; ++i) {
 
 	// adjustment proportional to theta * GAIN
-	adjustment_value =  (theta * fc_gainOf(TYPE_CORRECTION)) * operands[i][1];
+	adjustment_value =  (int)(theta * fc_gainOf(TYPE_CORRECTION)) * operands[i][1];
 
         // Over/Under throttle protection
         if((adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) > MAXDTY) || (adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) < MINDTY))
             adjustment_value = 0;
 
         // adjust DutyFactor of given channel accordingly
-	fc_adjustDTY(operands[i][0], adjustment_value);
+	fc_adjustDuty(operands[i][0], adjustment_value);
 	}
 }
 
@@ -197,18 +201,28 @@ void fc_correct(const int TYPE_CORRECTION, const int** operands)
 // Adjusts the PWMDTY of given channel by given value
 // (each increment of "value" corresponds to a 0.5% increase in throttle
 /*******************************************************************************/
-void fc_adjustDTY(int pwmChannel, int value)
+void fc_adjustDuty(int pwmChannel, int value)
 {
-	if (pwmChannel == 0) {
+	if (pwmChannel == 0) 
+	{
 		PWMDTY0 += value / 512;
 		PWMDTY1 += value % 512;
-	} else if (pwmChannel == 1) {
+	}
+	
+	else if (pwmChannel == 1) 
+	{
 		PWMDTY2 += value /512;
 		PWMDTY3 += value % 512;
-	} else if (pwmChannel == 2) {
+	} 
+	
+	else if (pwmChannel == 2) 
+	{
 		PWMDTY4 += value / 512;
 		PWMDTY5 += value % 512;
-	} else if (pwmChannel == 3) {
+	} 
+	
+	else if (pwmChannel == 3) 
+	{
 		PWMDTY6 += value / 512;
 		PWMDTY7 += value % 512;
 	}
@@ -217,7 +231,7 @@ void fc_adjustDTY(int pwmChannel, int value)
 /*******************************************************************************/
 // Returns true of desired angle is within appropriate values, false otherwise
 /*******************************************************************************/
-int fc_isNominal(const int TYPE_CORRECTION, float theta)
+int fc_isNominal(int TYPE_CORRECTION, float theta)
 {
     if(TYPE_CORRECTION == 0)
     {
@@ -253,7 +267,7 @@ int fc_isNominal(const int TYPE_CORRECTION, float theta)
 // Returns difference in desired readings within Nav.
 // (computed by nav_get<parameter>diff)
 /*******************************************************************************/
-float fc_angle_off(const int TYPE_CORRECTION)
+float fc_angle_off(int TYPE_CORRECTION)
 {
     if(TYPE_CORRECTION == 0)
         return nav_pitchDiff;
@@ -283,8 +297,8 @@ long fc_getCurrentPWMDTY(int pwmChannel)
 /*******************************************************************************/
 // Returns the appropriate gain value of a given type of correction
 /*******************************************************************************/
-float fc_gainOf(const int TYPE_CORRECTION)
-{
+float fc_gainOf(int TYPE_CORRECTION)
+{   
     if(TYPE_CORRECTION == 0)
         return PITCHGAIN;
     else if(TYPE_CORRECTION == 1)

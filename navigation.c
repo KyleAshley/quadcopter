@@ -13,19 +13,19 @@
 /******************************************************************************/
 // Flight Control Variables
 /******************************************************************************/
-float nav_actualPitch;
+float nav_actualPitch[2];
 float nav_desiredPitch;
 float nav_pitchDiff;
 
-float nav_actualRoll;
+float nav_actualRoll[2];
 float nav_desiredRoll;
 float nav_rollDiff;
 
-float nav_actualAltitude;
+float nav_actualAltitude[2];
 float nav_desiredAltitude;
 float nav_altitudeDiff;
 
-float nav_actualHeading;
+float nav_actualHeading[2];
 float nav_desiredHeading;
 float nav_headingDiff;
 
@@ -71,8 +71,9 @@ void nav_capturePitch(void) 				// updates desired pitch with current pitch
     a_updatePitchDeg();
 
     // Update Nav
-    nav_actualPitch = a_pitch;
-    nav_pitchDiff = nav_actualPitch - nav_desiredPitch;
+    nav_actualPitch[1] = nav_actualPitch[0];
+    nav_actualPitch[0] = a_pitch;
+    nav_pitchDiff = nav_actualPitch[0] - nav_desiredPitch;
 }
 
 void nav_captureRoll(void)  				// updates desired roll with current roll
@@ -84,8 +85,9 @@ void nav_captureRoll(void)  				// updates desired roll with current roll
     a_updateRollDeg();
 
     // Update Nav
-    nav_actualRoll = a_roll;
-    nav_rollDiff = nav_actualRoll - nav_desiredRoll;
+    nav_actualRoll[1] = nav_actualRoll[0];
+    nav_actualRoll[0] = a_roll;
+    nav_rollDiff = nav_actualRoll[0] - nav_desiredRoll;
 }
 
 void nav_captureAltitude(void)  				// updates desired roll with current roll
@@ -96,8 +98,9 @@ void nav_captureAltitude(void)  				// updates desired roll with current roll
     b_updateAltitude();
 
     // Update Nav
-    nav_actualAltitude = b_altitude;
-    nav_altitudeDiff = nav_actualAltitude - nav_desiredAltitude;
+    nav_actualAltitude[1] = nav_actualAltitude[0];      
+    nav_actualAltitude[0] = b_altitude;
+    nav_altitudeDiff = nav_actualAltitude[0] - nav_desiredAltitude;
 }
 
 void nav_captureHeading(void)
@@ -114,8 +117,9 @@ void nav_captureHeading(void)
 
     // Update Nav
     m_updateTiltHeading(a_pitch, a_roll);
-    nav_actualHeading = m_heading;
-    nav_headingDiff = nav_actualHeading - nav_desiredHeading;
+    nav_actualHeading[1] = nav_actualHeading[0];
+    nav_actualHeading[0] = m_heading;
+    nav_headingDiff = nav_actualHeading[0] - nav_desiredHeading;
 }
 
 void nav_setPitch(float p)
