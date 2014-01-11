@@ -54,64 +54,7 @@ void nav_setup(void)
   	LCDDelayDATA(TCHAR);
 }
 
-// navi checks
-/**********************************************************************************************************************/
-int nav_isHoldingPitch(void)
-{
-	// nominal pitch
-	if((nav_pitchDiff > -PITCHTOLERANCE) && (nav_pitchDiff < PITCHTOLERANCE))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
-	}
-}
-
-int nav_isHoldingRoll(void)
-{
-	// nominal roll
-	if((nav_rollDiff > -ROLLTOLERANCE) && (nav_pitchDiff < ROLLTOLERANCE))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
-	}
-}
-
-int nav_isHoldingAltitude(void)
-{
-	// nominal alt
-	if((nav_altitudeDiff > -ALTITUDETOLERANCE) && (nav_altitudeDiff < ALTITUDETOLERANCE))
-	{
-		return 1;
-	}
-	// need positive compensation
-	else
-	{
-		return 0;
-	}
-}
-
-int nav_isHoldingHeading(void)
-{
-	// nominal heading
-	if((nav_headingDiff > -HEADINGTOLERANCE) && (nav_headingDiff < HEADINGTOLERANCE))
-	{
-	  return 1;
-	}
-	// need positive compensation
-	else
-	{
-	  	return 0;
-	}
-}
-
+/*
 void nav_update(void)
 {
     nav_capturePitch();
@@ -119,7 +62,7 @@ void nav_update(void)
     nav_captureAltitude();
     nav_captureHeading();
 }
-
+*/
 
 //Lower Level Utility
 /*****************************************************/
