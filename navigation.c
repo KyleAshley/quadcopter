@@ -15,19 +15,19 @@
 /******************************************************************************/
 float nav_actualPitch[2];
 float nav_desiredPitch;
-float nav_pitchDiff;
+float nav_pitchDiff[2];
 
 float nav_actualRoll[2];
 float nav_desiredRoll;
-float nav_rollDiff;
+float nav_rollDiff[2];
 
 float nav_actualAltitude[2];
 float nav_desiredAltitude;
-float nav_altitudeDiff;
+float nav_altitudeDiff[2];
 
 float nav_actualHeading[2];
 float nav_desiredHeading;
-float nav_headingDiff;
+float nav_headingDiff[2];
 
 /******************************************************************************/
 // Flight Control Functions
@@ -73,7 +73,9 @@ void nav_capturePitch(void) 				// updates desired pitch with current pitch
     // Update Nav
     nav_actualPitch[1] = nav_actualPitch[0];
     nav_actualPitch[0] = a_pitch;
-    nav_pitchDiff = nav_actualPitch[0] - nav_desiredPitch;
+    nav_pitchDiff[1] = nav_pitchDiff[0];
+    nav_pitchDiff[0] = nav_actualPitch[0] - nav_desiredPitch;
+    
 }
 
 void nav_captureRoll(void)  				// updates desired roll with current roll
@@ -87,6 +89,7 @@ void nav_captureRoll(void)  				// updates desired roll with current roll
     // Update Nav
     nav_actualRoll[1] = nav_actualRoll[0];
     nav_actualRoll[0] = a_roll;
+    nav_rollDiff[1] = nav_rollDiff[0];
     nav_rollDiff = nav_actualRoll[0] - nav_desiredRoll;
 }
 
@@ -100,6 +103,7 @@ void nav_captureAltitude(void)  				// updates desired roll with current roll
     // Update Nav
     nav_actualAltitude[1] = nav_actualAltitude[0];      
     nav_actualAltitude[0] = b_altitude;
+    nav_altitudeDiff[1] = nav_altitudeDiff[0];
     nav_altitudeDiff = nav_actualAltitude[0] - nav_desiredAltitude;
 }
 
@@ -119,6 +123,7 @@ void nav_captureHeading(void)
     m_updateTiltHeading(a_pitch, a_roll);
     nav_actualHeading[1] = nav_actualHeading[0];
     nav_actualHeading[0] = m_heading;
+    nav_headingDiff[1] = nav_headingDiff[0];
     nav_headingDiff = nav_actualHeading[0] - nav_desiredHeading;
 }
 

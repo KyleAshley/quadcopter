@@ -4,6 +4,7 @@
 // Data and functions combining sensor output
 /********************************************************/
 #include <stdlib.h>
+#include <math.h>
 #include "flightControl.h"
 #include "mag.h"
 #include "accel.h"
@@ -36,6 +37,9 @@
 #define POSITIVE   1
 #define NEGATIVE  -1
 
+#define NEW 0
+#define OLD 1
+
 #define PITCHGAIN   1.5
 #define ROLLGAIN    1.5
 #define ALTITUDEGAIN    1.5
@@ -54,8 +58,15 @@
 #define ROLLTHRESH      2.0         // degrees
 #endif
 
+#define GAIN_SCALAR 2
+
 #define MINDTY 6000
 #define MAXDTY 12000
+
+int pitchGain[40] = 1;
+int rollGain[40] = 1;
+int altitudeGain[40] = 1;
+int headingGain[40] = 1;
 
 /*******************************************************************************/
 // Initializes motors on PWM channels 1, 3, 5, and 7. Call this immediately
@@ -167,33 +178,34 @@ int** fc_get_motors(const int TYPE_CORRECTION)
 void fc_correct(int TYPE_CORRECTION, int** operands)
 {
 	int i, adjustment_value, numMotors;
-	float theta;
-	
-	static int pitchGain[40] = 1;
-  static int rollGain[40] = 1;
-  static int altitudeGain[40] = 1;
-  static int headingGain[40] = 1;
+	float newTheta, oldTheta;
 	
 	numMotors = sizeof(operands) / (sizeof(int) * 2);
 
 	// get Degrees off in Pitch, Roll etc.
-	theta = fc_angle_off(TYPE_CORRECTION);
-
-    	// do nothing if nominal
-	if (fc_isNominal(TYPE_CORRECTION, theta))
+	newTheta = fc_angle_off(TYPE_CORRECTION, NEW);
+	oldTheta = fc_angle_off(TYPE_CORRECTION, OLD);
+	
+  // do nothing if nominal
+	if (fc_isNominal(TYPE_CORRECTION, newTheta))
 		return;
+	
+	// adjust the gain if angle remained constant or got worse
+	if (abs(newTheta) >= abs(oldTheta))
+	  fc_adjustGain(TYPE_CORRECTION, oldTheta);
 
 	for (i = 0;  i < numMotors; ++i) {
 
 	// adjustment proportional to theta * GAIN
-	adjustment_value =  (int)(theta * fc_gainOf(TYPE_CORRECTION)) * operands[i][1];
+	adjustment_value = (int)(newTheta * fc_gainOf(TYPE_CORRECTION, newTheta)) * operands[i][1];
 
-        // Over/Under throttle protection
-        if((adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) > MAXDTY) || (adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) < MINDTY))
-            adjustment_value = 0;
+  // Over/Under throttle protection
+  if((adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) > MAXDTY) || (adjustment_value + fc_getCurrentPWMDTY(operands[i][0]) < MINDTY))
+    adjustment_value = 0;
 
-        // adjust DutyFactor of given channel accordingly
+  // adjust DutyFactor of given channel accordingly
 	fc_adjustDuty(operands[i][0], adjustment_value);
+	oldTheta = newTheta;
 	}
 }
 
@@ -260,23 +272,23 @@ int fc_isNominal(int TYPE_CORRECTION, float theta)
             return 0;
         else
             return 1;
-    }
+      }
 }
 
 /*******************************************************************************/
 // Returns difference in desired readings within Nav.
 // (computed by nav_get<parameter>diff)
 /*******************************************************************************/
-float fc_angle_off(int TYPE_CORRECTION)
+float fc_angle_off(int TYPE_CORRECTION. int STATUS)
 {
     if(TYPE_CORRECTION == 0)
-        return nav_pitchDiff;
+        return nav_pitchDiff[STATUS];
     else if(TYPE_CORRECTION == 1)
-        return nav_rollDiff;
+        return nav_rollDiff[STATUS];
     else if(TYPE_CORRECTION == 2)
-        return nav_altitudeDiff;
+        return nav_altitudeDiff[STATUS];
     else if(TYPE_CORRECTIOn == 3)
-        return nav_headingDiff;
+        return nav_headingDiff[STATUS];
 }
 
 /*******************************************************************************/
@@ -308,3 +320,15 @@ float fc_gainOf(int TYPE_CORRECTION)
     else if(TYPE_CORRECTIOn == 3)
         return HEADINGGAIM;
 }
+
+fc_adjustGain(int TYPE_CORRECTION, float theta)
+{
+    int key = (int) theta;
+    if(TYPE_CORRECTION == 0)
+        pitchGain[key] += 1;
+    else if(TYPE_CORRECTION == 1)
+        rollGain[key] += 1;
+    else if(TYPE_CORRECTION == 2)
+        altitudeGain[key] += 1;
+    else if(TYPE_CORRECTIOn == 3)
+        headingGain[key] += 1;

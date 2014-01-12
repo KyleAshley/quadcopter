@@ -13,19 +13,19 @@
 /******************************************************************************/
 extern float nav_actualPitch[2];
 extern float nav_desiredPitch;
-extern float nav_pitchDiff;
+extern float nav_pitchDiff[2];
 
 extern float nav_actualRoll[2];
 extern float nav_desiredRoll;
-extern float nav_rollDiff;
+extern float nav_rollDiff[2];
 
 extern float nav_actualAltitude[2];
 extern float nav_desiredAltitude;
-extern float nav_altitudeDiff;
+extern float nav_altitudeDiff[2];
 
 extern float nav_actualHeading[2];
 extern float nav_desiredHeading;
-extern float nav_headingDiff;
+extern float nav_headingDiff[2];
 
 // Navigation Functions
 /******************************************************************************/
