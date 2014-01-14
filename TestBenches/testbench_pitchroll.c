@@ -9,14 +9,15 @@
 #include <math.h>
 #include "derivative.h"      /* derivative-specific definitions */
 #include "accel.h"
-#include "LCD_write.h"
-#include "I2C.h"
+#include "lcd.h"
+#include "i2c.h"
 #include "delays.h"
 
 
 #define BR 0x1F                 // 100kHz BR
 #define ALPHA 0.8
 #define M_PI 3.14159265358
+#define TCHAR 2000
 
 void main(void) {
   /* put your own code here */
@@ -33,23 +34,20 @@ void main(void) {
 
    // INITIALIZE LCD
    DDRK = 0xFF;
-   COMWRTFIRST(0x33);   //reset sequence provided by data sheet
-   COMWRT(0x32);       //reset sequence provided by data sheet
-   COMWRT(0x28);       //Function set to four bit data length ,2 line, 5 x 7 dot format
-   COMWRT(0x06);       //entry mode set, increment, no shift
-   COMWRT(0x0E);       //Display set, disp on, cursor on, blink off
-   COMWRT(0x01);       //Clear display
-   COMWRT(0x80);       //set start posistion, home position
-   LCDDelayDATA(TCHAR); // wait for LCD setup
+   lcd_COMWRTFIRST(0x33);   //reset sequence provided by data sheet
+   lcd_COMWRT(0x32);       //reset sequence provided by data sheet
+   lcd_COMWRT(0x28);       //Function set to four bit data length ,2 line, 5 x 7 dot format
+   lcd_COMWRT(0x06);       //entry mode set, increment, no shift
+   lcd_COMWRT(0x0E);       //Display set, disp on, cursor on, blink off
+   lcd_COMWRT(0x01);       //Clear display
+   lcd_COMWRT(0x80);       //set start posistion, home position
+   delay_LCD_DATA(TCHAR); // wait for LCD setup
 
   //********************************************************//
   // I2C Stuff
   //********************************************************//
-    openI2C(BR);
-    LCDDelayDATA(TCHAR);
-
+    openI2C(BR);   
     a_setup();
-    LCDDelayDATA(TCHAR);
 
 	for(;;)
 	{
@@ -61,18 +59,16 @@ void main(void) {
       a_updatePitchDeg();
       a_updateRollDeg();
 
-      DATWRTFIRST('P');
-      outputDouble(a_pitch);
+      lcd_outputChar('P');
+      lcd_outputDouble(a_pitch);
 
-      COMWRTFIRST(0xC0);
-      LCDDelayDATA(TCHAR);
+      lcd_newLine();
 
-      DATWRTFIRST('R');
-      outputDouble(a_roll);
+      lcd_outputChar('R');
+      lcd_outputDouble(a_roll);
 
-      LCDDelayDATA(TCHAR * 8);
-      COMWRTFIRST(0x01);
-      LCDDelayDATA(TCHAR);
+      delay_LCD_DATA(TCHAR * 5);
+      lcd_clear();
   }
 while(1);
 }

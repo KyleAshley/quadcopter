@@ -106,7 +106,7 @@ void m_setup(float gauss)
   // Set Continuous mode
   I2C_Write_Byte(m_ID, m_MODE, M_CONTINUOUS);
 
-	LCDDelayDATA(600);
+	delay_LCD_DATA(600);
 }
 
 

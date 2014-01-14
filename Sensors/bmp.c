@@ -102,7 +102,7 @@ void b_setup(void)
 void b_setControlMode(unsigned int mode)
 {
     I2C_Write_Byte(b_ID, 0xF4, mode);
-    LCDDelayDATA(2200);
+    delay_LCD_DATA(2200);
 }
 
 /******************************************************************************/
