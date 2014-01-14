@@ -21,7 +21,7 @@
 #define ALPHA 0.5
 #define MAGSCALE .92
 #define M_PI 3.14159265358
-
+#define TCHAR 2000
 
 void main(void) {
   /* put your own code here */
@@ -41,23 +41,23 @@ void main(void) {
 
    
    openI2C(BR);
-   LCDDelayDATA(TCHAR);
+   delay_LCD_DATA(TCHAR);
 
    d_setup();
-   LCDDelayDATA(TCHAR);
+   delay_LCD_DATA(TCHAR);
 
    for(;;)
    {
       d_readDistance(0);
 
       lcd_DATWRTFIRST('d');
-      LCDDelayDATA(TCHAR);
+      delay_LCD_DATA(TCHAR);
       lcd_DATWRTFIRST(':');
-      LCDDelayDATA(TCHAR);
+      delay_LCD_DATA(TCHAR);
       lcd_outputFloat(d_distance);
 
       for(i = 0; i < 2; i++)
-        LCDDelayDATA(TCHAR);
+        delay_LCD_DATA(TCHAR);
 
       lcd_clear();
     }

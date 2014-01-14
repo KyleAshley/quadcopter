@@ -20,7 +20,7 @@ float d_distance;
 void d_setup(void)
 {
     atd0_powerOn();
-    LCDDelayDATA(60);
+    delay_LCD_DATA(60);
     atd0_setFFC(1);
     atd0_setLength(1);
     atd0_setFifo(0);
