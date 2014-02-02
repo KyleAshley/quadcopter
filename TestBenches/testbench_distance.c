@@ -48,7 +48,7 @@ void main(void) {
 
    for(;;)
    {
-      d_readDistance(0);
+      d_readDistance_4_30(0);
 
       lcd_DATWRTFIRST('d');
       delay_LCD_DATA(TCHAR);

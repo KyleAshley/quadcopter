@@ -35,14 +35,27 @@ void d_setup(void)
 // PRE: NONE
 // POST: Reads ATD Conversion from a given channel and sets the current distance
 /******************************************************************************/
-void d_readDistance(unsigned int ch)          // reads a distance sensor on the given ATD channel
+void d_readDistance_20_150(unsigned int ch)          // reads a distance sensor on the given ATD channel
 {
-    float dist, vin, digi;
+    float dist, digi;
     
     digi = atd0_readChX(ch);
-    vin = d_DtoVIN(digi, 10);
-    dist = d_convertCM(vin);
-    dist = d_constrainDist(dist);
+    dist = 9462/(digi - 16.92);
+    dist = d_constrain_20_150(dist);
+    d_distance = dist;
+}
+
+/******************************************************************************/
+// PRE: NONE
+// POST: Reads ATD Conversion from a given channel and sets the current distance
+/******************************************************************************/
+void d_readDistance_4_30(unsigned int ch)          // reads a distance sensor on the given ATD channel
+{
+    float dist, digi;
+    
+    digi = atd0_readChX(ch);
+    dist = 2076/(digi - 11);
+    dist = d_constrain_4_30(dist);
     d_distance = dist;
 }
 
@@ -58,23 +71,12 @@ float d_DtoVIN(float d, int res)
     return vin;
 }
 
-/******************************************************************************/
-// PRE: ATD Conversion has taken place and new data has been converted to its VIN
-// POST: Returns the corresponding distance to any given input voltage
-/******************************************************************************/
-float d_convertCM(float vin)
-{
-    float dist;
-    //dist = 39.78828617 * pow(vin, 2) - 176.4290234 * vin + 208.9268541;
-    dist = 58 * pow(vin,-1.104);
-    return dist;
-}
 
 /******************************************************************************/
 // PRE: We have determined the distance
 // POST: Returns the corresponding distance constrained to readable range
 /******************************************************************************/
-float d_constrainDist(float cm)
+float d_constrain_20_150(float cm)
 {
     float conDist;
     if(cm < 20.0)
@@ -86,3 +88,21 @@ float d_constrainDist(float cm)
 
     return conDist;
 }
+
+/******************************************************************************/
+// PRE: We have determined the distance
+// POST: Returns the corresponding distance constrained to readable range
+/******************************************************************************/
+float d_constrain_4_30(float cm)
+{
+    float conDist;
+    if(cm < 4.0)
+        conDist = 4.0;
+    else if(cm > 30.0)
+        conDist = 30.0;
+    else
+        conDist = cm;
+
+    return conDist;
+}
+
